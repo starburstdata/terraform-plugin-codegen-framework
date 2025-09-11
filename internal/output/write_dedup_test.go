@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-codegen-framework/internal/output"
+	"github.com/starburstdata/terraform-plugin-codegen-framework/internal/output"
 )
 
 func TestWriteResources_Deduplication(t *testing.T) {

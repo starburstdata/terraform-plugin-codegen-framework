@@ -1,6 +1,6 @@
 # Terraform Plugin Framework Code Generator
 
-> _[Terraform Provider Code Generation](https://developer.hashicorp.com/terraform/plugin/code-generation) is currently in tech preview. If you have general questions or feedback about provider code generation, please create a new topic in the [Plugin Development Community Forum](https://discuss.hashicorp.com/c/terraform-providers/tf-plugin-sdk)._
+Temporary fork for use in Galaxy Terraform Generator
 
 ## Overview
 
@@ -21,10 +21,10 @@ Full usage info and examples live on the HashiCorp developer site: https://devel
 
 ### Installation
 
-You install a copy of the binary manually from the [releases](https://github.com/hashicorp/terraform-plugin-codegen-framework/releases) tab, or install via the Go toolchain:
+You install a copy of the binary manually from the [releases](https://github.com/starburstdata/terraform-plugin-codegen-framework/releases) tab, or install via the Go toolchain:
 
 ```shell
-go install github.com/hashicorp/terraform-plugin-codegen-framework/cmd/tfplugingen-framework@latest
+go install github.com/starburstdata/terraform-plugin-codegen-framework/cmd/tfplugingen-framework@latest
 ```
 
 ### Generate Command

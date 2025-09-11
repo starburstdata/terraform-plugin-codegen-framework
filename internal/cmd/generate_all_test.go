@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/cli"
 
-	"github.com/hashicorp/terraform-plugin-codegen-framework/internal/cmd"
+	"github.com/starburstdata/terraform-plugin-codegen-framework/internal/cmd"
 )
 
 func TestGenerateAllCommand(t *testing.T) {

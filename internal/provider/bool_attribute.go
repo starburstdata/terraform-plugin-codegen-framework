@@ -9,9 +9,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-codegen-spec/provider"
 
-	"github.com/hashicorp/terraform-plugin-codegen-framework/internal/convert"
-	"github.com/hashicorp/terraform-plugin-codegen-framework/internal/model"
-	"github.com/hashicorp/terraform-plugin-codegen-framework/internal/schema"
+	"github.com/starburstdata/terraform-plugin-codegen-framework/internal/convert"
+	"github.com/starburstdata/terraform-plugin-codegen-framework/internal/model"
+	"github.com/starburstdata/terraform-plugin-codegen-framework/internal/schema"
 )
 
 type GeneratorBoolAttribute struct {
