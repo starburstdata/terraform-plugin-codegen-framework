@@ -1,5 +1,4 @@
-module github.com/hashicorp/terraform-plugin-codegen-framework
-
+module github.com/starburstdata/terraform-plugin-codegen-framework
 go 1.22.7
 
 require (
