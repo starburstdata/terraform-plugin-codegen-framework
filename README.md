@@ -1,6 +1,6 @@
 # Terraform Plugin Framework Code Generator
 
-Temporary fork for use in Galaxy Terraform Generator
+Temporary fork for use in Galaxy Terraform Generator (ToDo: Commit upstream)
 
 ## Overview
 
