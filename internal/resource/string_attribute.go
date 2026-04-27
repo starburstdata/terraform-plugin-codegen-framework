@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-codegen-spec/resource"
+	specschema "github.com/hashicorp/terraform-plugin-codegen-spec/schema"
 
 	"github.com/starburstdata/terraform-plugin-codegen-framework/internal/convert"
 	"github.com/starburstdata/terraform-plugin-codegen-framework/internal/model"
@@ -24,6 +25,7 @@ type GeneratorStringAttribute struct {
 	PlanModifiers            convert.PlanModifiers
 	Sensitive                convert.Sensitive
 	Validators               convert.Validators
+	WriteOnly                convert.WriteOnly
 }
 
 func NewGeneratorStringAttribute(name string, a *resource.StringAttribute) (GeneratorStringAttribute, error) {
@@ -31,7 +33,38 @@ func NewGeneratorStringAttribute(name string, a *resource.StringAttribute) (Gene
 		return GeneratorStringAttribute{}, fmt.Errorf("*resource.StringAttribute is nil")
 	}
 
-	c := convert.NewComputedOptionalRequired(a.ComputedOptionalRequired)
+	// Auto-detect user-supplied credential fields by name and emit them as
+	// Sensitive + WriteOnly. The Galaxy API treats these as write-only (returns
+	// "<Value is encrypted>" or omits them from GET responses), so importing
+	// leaves state null. WriteOnly tells the framework to keep the value in
+	// config only - reads come from req.Config in Create/Update.
+	//
+	// Required vs Optional is preserved from the spec: credentials that are
+	// Required-on-Create stay Required so users get a config-time diagnostic
+	// instead of an apply-time API 400. After import, terraform forces the
+	// user to declare the field in HCL; the framework still doesn't compare it
+	// during ImportStateVerify because it's WriteOnly.
+	//
+	// Skip Computed-only attributes - those are server-generated (e.g.
+	// service_account.password), where the API returns the value on create.
+	// Marking those WriteOnly would force state to null and lose the value.
+	computedOptionalRequired := a.ComputedOptionalRequired
+	sensitive := a.Sensitive
+	var writeOnly *bool
+	if convert.IsCredentialField(name) && a.ComputedOptionalRequired != specschema.Computed {
+		t := true
+		sensitive = &t
+		writeOnly = &t
+		// Computed + WriteOnly is contradictory: WriteOnly means the value is
+		// supplied via config and never persisted to state, while Computed means
+		// the server populates it. For multi-auth catalogs the spec marks the
+		// fields ComputedOptional, but for credentials we want plain Optional.
+		if a.ComputedOptionalRequired == specschema.ComputedOptional {
+			computedOptionalRequired = specschema.Optional
+		}
+	}
+
+	c := convert.NewComputedOptionalRequired(computedOptionalRequired)
 
 	ctp := convert.NewCustomTypePrimitive(a.CustomType, a.AssociatedExternalType, name)
 
@@ -43,9 +76,11 @@ func NewGeneratorStringAttribute(name string, a *resource.StringAttribute) (Gene
 
 	pm := convert.NewPlanModifiers(convert.PlanModifierTypeString, a.PlanModifiers.CustomPlanModifiers())
 
-	s := convert.NewSensitive(a.Sensitive)
+	s := convert.NewSensitive(sensitive)
 
 	v := convert.NewValidators(convert.ValidatorTypeString, a.Validators.CustomValidators())
+
+	w := convert.NewWriteOnly(writeOnly)
 
 	return GeneratorStringAttribute{
 		AssociatedExternalType:   generatorschema.NewAssocExtType(a.AssociatedExternalType),
@@ -57,6 +92,7 @@ func NewGeneratorStringAttribute(name string, a *resource.StringAttribute) (Gene
 		PlanModifiers:            pm,
 		Sensitive:                s,
 		Validators:               v,
+		WriteOnly:                w,
 	}, nil
 }
 
@@ -123,6 +159,10 @@ func (g GeneratorStringAttribute) Equal(ga generatorschema.GeneratorAttribute) b
 		return false
 	}
 
+	if !g.WriteOnly.Equal(h.WriteOnly) {
+		return false
+	}
+
 	return g.Validators.Equal(h.Validators)
 }
 
@@ -133,6 +173,7 @@ func (g GeneratorStringAttribute) Schema(name generatorschema.FrameworkIdentifie
 	b.Write(g.CustomType.Schema())
 	b.Write(g.ComputedOptionalRequired.Schema())
 	b.Write(g.Sensitive.Schema())
+	b.Write(g.WriteOnly.Schema())
 	b.Write(g.Description.Schema())
 	b.Write(g.DeprecationMessage.Schema())
 	b.Write(g.PlanModifiers.Schema())
