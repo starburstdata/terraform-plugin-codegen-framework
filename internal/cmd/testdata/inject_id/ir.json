@@ -1,0 +1,35 @@
+{
+  "provider": {
+    "name": "example"
+  },
+  "resources": [
+    {
+      "name": "widget",
+      "schema": {
+        "attributes": [
+          {
+            "name": "name",
+            "string": {
+              "computed_optional_required": "required"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "gadget",
+      "schema": {
+        "attributes": [
+          {
+            "name": "id",
+            "string": {
+              "computed_optional_required": "required",
+              "description": "author-defined id, must not be overwritten"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "version": "0.1"
+}

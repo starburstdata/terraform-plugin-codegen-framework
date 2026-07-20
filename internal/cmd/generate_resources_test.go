@@ -16,10 +16,16 @@ func TestGenerateResourcesCommand(t *testing.T) {
 	testCases := map[string]struct {
 		irInputPath   string
 		goldenFileDir string
+		injectID      bool
 	}{
 		"custom_and_external": {
 			irInputPath:   "testdata/custom_and_external/ir.json",
 			goldenFileDir: "testdata/custom_and_external/resources_output",
+		},
+		"inject_id": {
+			irInputPath:   "testdata/inject_id/ir.json",
+			goldenFileDir: "testdata/inject_id/resources_output_inject_id",
+			injectID:      true,
 		},
 	}
 	for name, testCase := range testCases {
@@ -37,6 +43,9 @@ func TestGenerateResourcesCommand(t *testing.T) {
 				"--input", testCase.irInputPath,
 				"--package", "generated",
 				"--output", testOutputDir,
+			}
+			if testCase.injectID {
+				args = append(args, "--inject-id")
 			}
 
 			exitCode := c.Run(args)
