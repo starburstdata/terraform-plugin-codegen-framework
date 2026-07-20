@@ -18,6 +18,7 @@ func TestGenerateAllCommand(t *testing.T) {
 		irInputPath   string
 		pkgName       string
 		goldenFileDir string
+		injectID      bool
 	}{
 		"specified_pkg_name": {
 			irInputPath:   "testdata/custom_and_external/ir.json",
@@ -27,6 +28,17 @@ func TestGenerateAllCommand(t *testing.T) {
 		"default_pkg_name": {
 			irInputPath:   "testdata/custom_and_external/ir.json",
 			goldenFileDir: "testdata/custom_and_external/all_output/default_pkg_name",
+		},
+		"inject_id": {
+			irInputPath:   "testdata/inject_id/ir.json",
+			pkgName:       "generated",
+			goldenFileDir: "testdata/inject_id/all_output_inject_id",
+			injectID:      true,
+		},
+		"no_inject_id": {
+			irInputPath:   "testdata/inject_id/ir.json",
+			pkgName:       "generated",
+			goldenFileDir: "testdata/inject_id/all_output_no_inject_id",
 		},
 	}
 	for name, testCase := range testCases {
@@ -44,6 +56,9 @@ func TestGenerateAllCommand(t *testing.T) {
 				"--input", testCase.irInputPath,
 				"--package", testCase.pkgName,
 				"--output", testOutputDir,
+			}
+			if testCase.injectID {
+				args = append(args, "--inject-id")
 			}
 
 			exitCode := c.Run(args)

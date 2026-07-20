@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-codegen-spec/spec"
 
 	"github.com/starburstdata/terraform-plugin-codegen-framework/internal/format"
+	"github.com/starburstdata/terraform-plugin-codegen-framework/internal/inject"
 	"github.com/starburstdata/terraform-plugin-codegen-framework/internal/input"
 	"github.com/starburstdata/terraform-plugin-codegen-framework/internal/logging"
 	"github.com/starburstdata/terraform-plugin-codegen-framework/internal/output"
@@ -29,6 +30,7 @@ type GenerateResourcesCommand struct {
 	flagIRInputPath string
 	flagOutputPath  string
 	flagPackageName string
+	flagInjectID    bool
 }
 
 func (cmd *GenerateResourcesCommand) Flags() *flag.FlagSet {
@@ -36,6 +38,7 @@ func (cmd *GenerateResourcesCommand) Flags() *flag.FlagSet {
 	fs.StringVar(&cmd.flagIRInputPath, "input", "./ir.json", "path to intermediate representation (JSON)")
 	fs.StringVar(&cmd.flagOutputPath, "output", "./output", "directory path to output generated code files")
 	fs.StringVar(&cmd.flagPackageName, "package", "", "name of Go package for generated code files")
+	fs.BoolVar(&cmd.flagInjectID, "inject-id", false, "inject a Computed string 'id' attribute into every resource that does not already declare one")
 
 	return fs
 }
@@ -122,6 +125,10 @@ func (cmd *GenerateResourcesCommand) runInternal(ctx context.Context, logger *sl
 	spec, err := spec.Parse(ctx, src)
 	if err != nil {
 		return fmt.Errorf("error parsing IR JSON: %w", err)
+	}
+
+	if cmd.flagInjectID {
+		inject.ID(&spec, logger)
 	}
 
 	err = generateResourceCode(ctx, spec, cmd.flagOutputPath, cmd.flagPackageName, "Resource", logger)
