@@ -86,6 +86,8 @@ func NewAttribute(a datasource.Attribute) (generatorschema.GeneratorAttribute, e
 	switch {
 	case a.Bool != nil:
 		return NewGeneratorBoolAttribute(a.Name, a.Bool)
+	case a.Dynamic != nil:
+		return NewGeneratorDynamicAttribute(a.Name, a.Dynamic)
 	case a.Float64 != nil:
 		return NewGeneratorFloat64Attribute(a.Name, a.Float64)
 	case a.Int64 != nil:

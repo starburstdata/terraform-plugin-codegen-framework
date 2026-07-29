@@ -10,6 +10,7 @@ import (
 
 const (
 	BoolValueType    = "types.Bool"
+	DynamicValueType = "types.Dynamic"
 	Float64ValueType = "types.Float64"
 	Int64ValueType   = "types.Int64"
 	ListValueType    = "types.List"

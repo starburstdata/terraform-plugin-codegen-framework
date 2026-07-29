@@ -15,6 +15,7 @@ import (
 
 const (
 	PlanModifierTypeBool    PlanModifierType = "Bool"
+	PlanModifierTypeDynamic PlanModifierType = "Dynamic"
 	PlanModifierTypeFloat64 PlanModifierType = "Float64"
 	PlanModifierTypeInt64   PlanModifierType = "Int64"
 	PlanModifierTypeList    PlanModifierType = "List"
