@@ -42,6 +42,12 @@ func (o ObjectAttributeTypes) AttributeTypes() []byte {
 			} else {
 				b.WriteString(fmt.Sprintf("%q: types.BoolType,", v.Name))
 			}
+		case v.Dynamic != nil:
+			if v.Dynamic.CustomType != nil {
+				b.WriteString(fmt.Sprintf("%q: %s,", v.Name, v.Dynamic.CustomType.Type))
+			} else {
+				b.WriteString(fmt.Sprintf("%q: types.DynamicType,", v.Name))
+			}
 		case v.Float64 != nil:
 			if v.Float64.CustomType != nil {
 				b.WriteString(fmt.Sprintf("%q: %s,", v.Name, v.Float64.CustomType.Type))
@@ -108,6 +114,12 @@ func (o ObjectAttributeTypes) Imports() *schema.Imports {
 		case v.Bool != nil:
 			if v.Bool.CustomType != nil && v.Bool.CustomType.HasImport() {
 				imports.Add(*v.Bool.CustomType.Import)
+				continue
+			}
+			imports.Add(code.Import{Path: schema.AttrImport}, code.Import{Path: schema.TypesImport})
+		case v.Dynamic != nil:
+			if v.Dynamic.CustomType != nil && v.Dynamic.CustomType.HasImport() {
+				imports.Add(*v.Dynamic.CustomType.Import)
 				continue
 			}
 			imports.Add(code.Import{Path: schema.AttrImport}, code.Import{Path: schema.TypesImport})

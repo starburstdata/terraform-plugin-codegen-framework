@@ -15,6 +15,7 @@ import (
 
 const (
 	ValidatorTypeBool    ValidatorType = "Bool"
+	ValidatorTypeDynamic ValidatorType = "Dynamic"
 	ValidatorTypeFloat64 ValidatorType = "Float64"
 	ValidatorTypeInt64   ValidatorType = "Int64"
 	ValidatorTypeList    ValidatorType = "List"
