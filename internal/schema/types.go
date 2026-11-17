@@ -95,6 +95,7 @@ type Type int64
 const (
 	InvalidGeneratorSchemaType Type = iota
 	GeneratorBoolAttribute
+	GeneratorDynamicAttribute
 	GeneratorFloat64Attribute
 	GeneratorInt64Attribute
 	GeneratorListAttribute

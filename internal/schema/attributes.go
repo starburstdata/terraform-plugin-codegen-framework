@@ -23,6 +23,8 @@ func (g GeneratorAttributes) AttributeTypes() (map[string]string, error) {
 		switch g[k].GeneratorSchemaType() {
 		case GeneratorBoolAttribute:
 			attributeTypes[k] = "Bool"
+		case GeneratorDynamicAttribute:
+			attributeTypes[k] = "Dynamic"
 		case GeneratorFloat64Attribute:
 			attributeTypes[k] = "Float64"
 		case GeneratorInt64Attribute:
