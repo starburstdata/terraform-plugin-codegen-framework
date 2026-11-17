@@ -40,24 +40,24 @@ AttrTypes: {{$key.ToPascalCase}}Value{}.AttributeTypes(ctx),
 }
 {{else if eq $value "SingleNested"}}
 
-var {{$key.ToCamelCase}} basetypes.ObjectValue
+var {{$key.ToPrefixCamelCase $.Name}} basetypes.ObjectValue
 
-if v.{{$key.ToPascalCase}}.IsNull() {
-{{$key.ToCamelCase}} = types.ObjectNull(
+if v.{{$key.ToPrefixPascalCase $.Name}}.IsNull() {
+{{$key.ToPrefixCamelCase $.Name}} = types.ObjectNull(
 {{$key.ToPascalCase}}Value{}.AttributeTypes(ctx),
 )
 }
 
-if v.{{$key.ToPascalCase}}.IsUnknown() {
-{{$key.ToCamelCase}} = types.ObjectUnknown(
+if v.{{$key.ToPrefixPascalCase $.Name}}.IsUnknown() {
+{{$key.ToPrefixCamelCase $.Name}} = types.ObjectUnknown(
 {{$key.ToPascalCase}}Value{}.AttributeTypes(ctx),
 )
 }
 
-if !v.{{$key.ToPascalCase}}.IsNull() && !v.{{$key.ToPascalCase}}.IsUnknown() {
-{{$key.ToCamelCase}} = types.ObjectValueMust(
+if !v.{{$key.ToPrefixPascalCase $.Name}}.IsNull() && !v.{{$key.ToPrefixPascalCase $.Name}}.IsUnknown() {
+{{$key.ToPrefixCamelCase $.Name}} = types.ObjectValueMust(
 {{$key.ToPascalCase}}Value{}.AttributeTypes(ctx),
-v.{{$key.ToPascalCase}}.Attributes(),
+v.{{$key.ToPrefixPascalCase $.Name}}.Attributes(),
 )
 }
 {{end}}

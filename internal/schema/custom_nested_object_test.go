@@ -1647,6 +1647,63 @@ map[string]attr.Value{
 return objVal, diags
 }`),
 		},
+		"single-nested-attribute-name-same-as-go-keyword": {
+			name: "Example",
+			attributeTypes: map[string]string{
+				"type": "SingleNested",
+			},
+			attrTypes: map[string]string{
+				"type": "basetypes.ObjectType{\nAttrTypes: TypeValue{}.AttributeTypes(ctx),\n}",
+			},
+			expected: []byte(`
+func (v ExampleValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, diag.Diagnostics) {
+var diags diag.Diagnostics
+
+var exampleType basetypes.ObjectValue
+
+if v.ExampleType.IsNull() {
+exampleType = types.ObjectNull(
+TypeValue{}.AttributeTypes(ctx),
+)
+}
+
+if v.ExampleType.IsUnknown() {
+exampleType = types.ObjectUnknown(
+TypeValue{}.AttributeTypes(ctx),
+)
+}
+
+if !v.ExampleType.IsNull() && !v.ExampleType.IsUnknown() {
+exampleType = types.ObjectValueMust(
+TypeValue{}.AttributeTypes(ctx),
+v.ExampleType.Attributes(),
+)
+}
+
+
+attributeTypes := map[string]attr.Type{
+"type": basetypes.ObjectType{
+AttrTypes: TypeValue{}.AttributeTypes(ctx),
+},
+}
+
+if v.IsNull() {
+return types.ObjectNull(attributeTypes), diags
+}
+
+if v.IsUnknown() {
+return types.ObjectUnknown(attributeTypes), diags
+}
+
+objVal, diags := types.ObjectValue(
+attributeTypes,
+map[string]attr.Value{
+"type": exampleType,
+})
+
+return objVal, diags
+}`),
+		},
 	}
 
 	for name, testCase := range testCases {
