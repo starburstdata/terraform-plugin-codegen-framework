@@ -24,6 +24,9 @@ type GeneratorMapNestedAttribute struct {
 	NestedAttributeObject    convert.NestedAttributeObject
 	Sensitive                convert.Sensitive
 	Validators               convert.Validators
+
+	// TypeNameKey overrides the attribute name when deriving generated Go type names.
+	TypeNameKey string
 }
 
 func NewGeneratorMapNestedAttribute(name string, a *datasource.MapNestedAttribute) (GeneratorMapNestedAttribute, error) {
@@ -94,6 +97,10 @@ func (g GeneratorMapNestedAttribute) Equal(ga schema.GeneratorAttribute) bool {
 	h, ok := ga.(GeneratorMapNestedAttribute)
 
 	if !ok {
+		return false
+	}
+
+	if g.TypeNameKey != h.TypeNameKey {
 		return false
 	}
 
@@ -171,6 +178,8 @@ func (g GeneratorMapNestedAttribute) GetAttributes() schema.GeneratorAttributes 
 }
 
 func (g GeneratorMapNestedAttribute) CustomTypeAndValue(name string) ([]byte, error) {
+	name = schema.TypeKeyOf(g, schema.FrameworkIdentifier(name)).ToString()
+
 	var buf bytes.Buffer
 
 	attributeAttrValues, err := g.NestedObject.Attributes.AttrValues()
@@ -237,6 +246,8 @@ func (g GeneratorMapNestedAttribute) CustomTypeAndValue(name string) ([]byte, er
 }
 
 func (g GeneratorMapNestedAttribute) ToFromFunctions(name string) ([]byte, error) {
+	name = schema.TypeKeyOf(g, schema.FrameworkIdentifier(name)).ToString()
+
 	if g.NestedObject.AssociatedExternalType == nil {
 		return nil, nil
 	}
@@ -290,4 +301,16 @@ func (g GeneratorMapNestedAttribute) To() (schema.ToFromConversion, error) {
 
 func (g GeneratorMapNestedAttribute) From() (schema.ToFromConversion, error) {
 	return schema.ToFromConversion{}, schema.NewUnimplementedError(errors.New("map nested type is not yet implemented"))
+}
+
+func (g GeneratorMapNestedAttribute) TypeKey() string {
+	return g.TypeNameKey
+}
+
+// WithTypeKey returns a copy that derives its generated Go type names from key.
+func (g GeneratorMapNestedAttribute) WithTypeKey(key string) schema.GeneratorAttribute {
+	g.TypeNameKey = key
+	g.NestedAttributeObject = g.NestedAttributeObject.WithTypeName(key)
+
+	return g
 }

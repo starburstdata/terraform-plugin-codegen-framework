@@ -26,6 +26,9 @@ type GeneratorSingleNestedAttribute struct {
 	PlanModifiers            convert.PlanModifiers
 	Sensitive                convert.Sensitive
 	Validators               convert.Validators
+
+	// TypeNameKey overrides the attribute name when deriving generated Go type names.
+	TypeNameKey string
 }
 
 func NewGeneratorSingleNestedAttribute(name string, a *resource.SingleNestedAttribute) (GeneratorSingleNestedAttribute, error) {
@@ -100,6 +103,10 @@ func (g GeneratorSingleNestedAttribute) Equal(ga schema.GeneratorAttribute) bool
 		return false
 	}
 
+	if g.TypeNameKey != h.TypeNameKey {
+		return false
+	}
+
 	if !g.AssociatedExternalType.Equal(h.AssociatedExternalType) {
 		return false
 	}
@@ -169,7 +176,7 @@ func (g GeneratorSingleNestedAttribute) ModelField(name schema.FrameworkIdentifi
 	f := model.Field{
 		Name:      name.ToPascalCase(),
 		TfsdkName: name.ToString(),
-		ValueType: name.ToPascalCase() + "Value",
+		ValueType: schema.TypeKeyOf(g, name).ToPascalCase() + "Value",
 	}
 
 	customValueType := g.CustomType.ValueType()
@@ -186,6 +193,8 @@ func (g GeneratorSingleNestedAttribute) GetAttributes() schema.GeneratorAttribut
 }
 
 func (g GeneratorSingleNestedAttribute) CustomTypeAndValue(name string) ([]byte, error) {
+	name = schema.TypeKeyOf(g, schema.FrameworkIdentifier(name)).ToString()
+
 	var buf bytes.Buffer
 
 	attributeAttrValues, err := g.Attributes.AttrValues()
@@ -252,6 +261,8 @@ func (g GeneratorSingleNestedAttribute) CustomTypeAndValue(name string) ([]byte,
 }
 
 func (g GeneratorSingleNestedAttribute) ToFromFunctions(name string) ([]byte, error) {
+	name = schema.TypeKeyOf(g, schema.FrameworkIdentifier(name)).ToString()
+
 	if g.AssociatedExternalType == nil {
 		return nil, nil
 	}
@@ -301,4 +312,16 @@ func (g GeneratorSingleNestedAttribute) To() (schema.ToFromConversion, error) {
 
 func (g GeneratorSingleNestedAttribute) From() (schema.ToFromConversion, error) {
 	return schema.ToFromConversion{}, schema.NewUnimplementedError(errors.New("single nested type is not yet implemented"))
+}
+
+func (g GeneratorSingleNestedAttribute) TypeKey() string {
+	return g.TypeNameKey
+}
+
+// WithTypeKey returns a copy that derives its generated Go type names from key.
+func (g GeneratorSingleNestedAttribute) WithTypeKey(key string) schema.GeneratorAttribute {
+	g.TypeNameKey = key
+	g.CustomType = g.CustomType.WithName(key)
+
+	return g
 }

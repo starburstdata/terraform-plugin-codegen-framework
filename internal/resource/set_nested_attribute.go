@@ -26,6 +26,9 @@ type GeneratorSetNestedAttribute struct {
 	PlanModifiers            convert.PlanModifiers
 	Sensitive                convert.Sensitive
 	Validators               convert.Validators
+
+	// TypeNameKey overrides the attribute name when deriving generated Go type names.
+	TypeNameKey string
 }
 
 func NewGeneratorSetNestedAttribute(name string, a *resource.SetNestedAttribute) (GeneratorSetNestedAttribute, error) {
@@ -108,6 +111,10 @@ func (g GeneratorSetNestedAttribute) Equal(ga schema.GeneratorAttribute) bool {
 	h, ok := ga.(GeneratorSetNestedAttribute)
 
 	if !ok {
+		return false
+	}
+
+	if g.TypeNameKey != h.TypeNameKey {
 		return false
 	}
 
@@ -195,6 +202,8 @@ func (g GeneratorSetNestedAttribute) GetAttributes() schema.GeneratorAttributes 
 }
 
 func (g GeneratorSetNestedAttribute) CustomTypeAndValue(name string) ([]byte, error) {
+	name = schema.TypeKeyOf(g, schema.FrameworkIdentifier(name)).ToString()
+
 	var buf bytes.Buffer
 
 	attributeAttrValues, err := g.NestedObject.Attributes.AttrValues()
@@ -261,6 +270,8 @@ func (g GeneratorSetNestedAttribute) CustomTypeAndValue(name string) ([]byte, er
 }
 
 func (g GeneratorSetNestedAttribute) ToFromFunctions(name string) ([]byte, error) {
+	name = schema.TypeKeyOf(g, schema.FrameworkIdentifier(name)).ToString()
+
 	if g.NestedObject.AssociatedExternalType == nil {
 		return nil, nil
 	}
@@ -314,4 +325,16 @@ func (g GeneratorSetNestedAttribute) To() (schema.ToFromConversion, error) {
 
 func (g GeneratorSetNestedAttribute) From() (schema.ToFromConversion, error) {
 	return schema.ToFromConversion{}, schema.NewUnimplementedError(errors.New("set nested type is not yet implemented"))
+}
+
+func (g GeneratorSetNestedAttribute) TypeKey() string {
+	return g.TypeNameKey
+}
+
+// WithTypeKey returns a copy that derives its generated Go type names from key.
+func (g GeneratorSetNestedAttribute) WithTypeKey(key string) schema.GeneratorAttribute {
+	g.TypeNameKey = key
+	g.NestedAttributeObject = g.NestedAttributeObject.WithTypeName(key)
+
+	return g
 }
