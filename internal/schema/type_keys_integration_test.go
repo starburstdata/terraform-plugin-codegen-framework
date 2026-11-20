@@ -149,6 +149,18 @@ func TestTypeNames_ReserveBlockDeclarations(t *testing.T) {
 				},
 			}},
 		},
+	}, func(t *testing.T, generated schema.GeneratorSchema) {
+		b, ok := generated.Attributes["b"].(schema.TypeKeyer)
+		if !ok {
+			t.Fatal("b should have a nested type")
+		}
+		columns, ok := b.GetAttributes()["columns"].(schema.TypeKeyer)
+		if !ok {
+			t.Fatal("b.columns should have a nested type")
+		}
+		if got := schema.TypeKeyOf(columns, schema.FrameworkIdentifier("columns")).ToString(); got != "b_columns_2" {
+			t.Fatalf("expected b.columns type key b_columns_2, got %q", got)
+		}
 	})
 }
 
