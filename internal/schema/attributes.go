@@ -12,6 +12,17 @@ import (
 
 type GeneratorAttributes map[string]GeneratorAttribute
 
+// TypeNames maps Terraform attribute keys to their resolved generated type names.
+func (g GeneratorAttributes) TypeNames() map[string]string {
+	names := make(map[string]string)
+	for key, a := range g {
+		if _, ok := a.(TypeKeyer); ok {
+			names[key] = TypeKeyOf(a, FrameworkIdentifier(key)).ToString()
+		}
+	}
+	return names
+}
+
 // AttributeTypes returns a mapping of attribute names to string representations of the
 // attribute type.
 func (g GeneratorAttributes) AttributeTypes() (map[string]string, error) {
@@ -77,15 +88,17 @@ func (g GeneratorAttributes) AttrTypes() (map[string]string, error) {
 			continue
 		}
 
+		typeKey := TypeKeyOf(g[k], name)
+
 		switch g[k].GeneratorSchemaType() {
 		case GeneratorListNestedAttribute:
-			attrTypes[k] = fmt.Sprintf("basetypes.ListType{\nElemType: %sValue{}.Type(ctx),\n}", name.ToPascalCase())
+			attrTypes[k] = fmt.Sprintf("basetypes.ListType{\nElemType: %sValue{}.Type(ctx),\n}", typeKey.ToPascalCase())
 		case GeneratorMapNestedAttribute:
-			attrTypes[k] = fmt.Sprintf("basetypes.MapType{\nElemType: %sValue{}.Type(ctx),\n}", name.ToPascalCase())
+			attrTypes[k] = fmt.Sprintf("basetypes.MapType{\nElemType: %sValue{}.Type(ctx),\n}", typeKey.ToPascalCase())
 		case GeneratorSetNestedAttribute:
-			attrTypes[k] = fmt.Sprintf("basetypes.SetType{\nElemType: %sValue{}.Type(ctx),\n}", name.ToPascalCase())
+			attrTypes[k] = fmt.Sprintf("basetypes.SetType{\nElemType: %sValue{}.Type(ctx),\n}", typeKey.ToPascalCase())
 		case GeneratorSingleNestedAttribute:
-			attrTypes[k] = fmt.Sprintf("basetypes.ObjectType{\nAttrTypes: %sValue{}.AttributeTypes(ctx),\n}", name.ToPascalCase())
+			attrTypes[k] = fmt.Sprintf("basetypes.ObjectType{\nAttrTypes: %sValue{}.AttributeTypes(ctx),\n}", typeKey.ToPascalCase())
 		}
 	}
 

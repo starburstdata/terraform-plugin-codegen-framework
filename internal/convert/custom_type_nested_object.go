@@ -33,6 +33,17 @@ func NewCustomTypeNestedObject(c *specschema.CustomType, name string) CustomType
 	}
 }
 
+// WithName returns a copy that derives the generated Go type names from name.
+func (c CustomTypeNestedObject) WithName(name string) CustomTypeNestedObject {
+	c.name = name
+
+	return c
+}
+
+func (c CustomTypeNestedObject) Name() string {
+	return c.name
+}
+
 func (c CustomTypeNestedObject) Equal(other CustomTypeNestedObject) bool {
 	if !c.customType.Equal(other.customType) {
 		return false

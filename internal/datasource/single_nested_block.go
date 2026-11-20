@@ -174,7 +174,7 @@ func (g GeneratorSingleNestedBlock) ModelField(name schema.FrameworkIdentifier) 
 	f := model.Field{
 		Name:      name.ToPascalCase(),
 		TfsdkName: name.ToString(),
-		ValueType: name.ToPascalCase() + "Value",
+		ValueType: schema.TypeKeyOf(g, name).ToPascalCase() + "Value",
 	}
 
 	customValueType := g.CustomType.ValueType()
@@ -195,6 +195,8 @@ func (g GeneratorSingleNestedBlock) GetBlocks() schema.GeneratorBlocks {
 }
 
 func (g GeneratorSingleNestedBlock) CustomTypeAndValue(name string) ([]byte, error) {
+	name = schema.TypeKeyOf(g, schema.FrameworkIdentifier(name)).ToString()
+
 	var buf bytes.Buffer
 
 	attributeAttrValues, err := g.Attributes.AttrValues()
@@ -280,7 +282,7 @@ func (g GeneratorSingleNestedBlock) CustomTypeAndValue(name string) ([]byte, err
 		return nil, err
 	}
 
-	objectValue := schema.NewCustomNestedObjectValue(name, attributesBlocksTypes, attributesBlocksAttrTypes, attributesBlocksAttrValues, attributeCollectionTypes)
+	objectValue := schema.NewCustomNestedObjectValue(name, attributesBlocksTypes, attributesBlocksAttrTypes, attributesBlocksAttrValues, attributeCollectionTypes).WithTypeNames(schema.NestedTypeNames(g.Attributes, g.Blocks))
 
 	b, err = objectValue.Render()
 
@@ -324,6 +326,8 @@ func (g GeneratorSingleNestedBlock) CustomTypeAndValue(name string) ([]byte, err
 }
 
 func (g GeneratorSingleNestedBlock) ToFromFunctions(name string) ([]byte, error) {
+	name = schema.TypeKeyOf(g, schema.FrameworkIdentifier(name)).ToString()
+
 	if g.AssociatedExternalType == nil {
 		return nil, nil
 	}
@@ -373,4 +377,15 @@ func (g GeneratorSingleNestedBlock) To() (schema.ToFromConversion, error) {
 
 func (g GeneratorSingleNestedBlock) From() (schema.ToFromConversion, error) {
 	return schema.ToFromConversion{}, schema.NewUnimplementedError(errors.New("single nested type is not yet implemented"))
+}
+
+func (g GeneratorSingleNestedBlock) TypeKey() string {
+	return g.CustomType.Name()
+}
+
+// WithTypeKey returns a copy that derives its generated Go type names from key.
+func (g GeneratorSingleNestedBlock) WithTypeKey(key string) schema.GeneratorBlock {
+	g.CustomType = g.CustomType.WithName(key)
+
+	return g
 }

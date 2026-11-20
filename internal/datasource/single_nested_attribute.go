@@ -147,7 +147,7 @@ func (g GeneratorSingleNestedAttribute) ModelField(name schema.FrameworkIdentifi
 	f := model.Field{
 		Name:      name.ToPascalCase(),
 		TfsdkName: name.ToString(),
-		ValueType: name.ToPascalCase() + "Value",
+		ValueType: schema.TypeKeyOf(g, name).ToPascalCase() + "Value",
 	}
 
 	customValueType := g.CustomType.ValueType()
@@ -164,6 +164,8 @@ func (g GeneratorSingleNestedAttribute) GetAttributes() schema.GeneratorAttribut
 }
 
 func (g GeneratorSingleNestedAttribute) CustomTypeAndValue(name string) ([]byte, error) {
+	name = schema.TypeKeyOf(g, schema.FrameworkIdentifier(name)).ToString()
+
 	var buf bytes.Buffer
 
 	attributeAttrValues, err := g.Attributes.AttrValues()
@@ -200,7 +202,7 @@ func (g GeneratorSingleNestedAttribute) CustomTypeAndValue(name string) ([]byte,
 		return nil, err
 	}
 
-	objectValue := schema.NewCustomNestedObjectValue(name, attributeTypes, attributeAttrTypes, attributeAttrValues, attributeCollectionTypes)
+	objectValue := schema.NewCustomNestedObjectValue(name, attributeTypes, attributeAttrTypes, attributeAttrValues, attributeCollectionTypes).WithTypeNames(g.Attributes.TypeNames())
 
 	b, err = objectValue.Render()
 
@@ -230,6 +232,8 @@ func (g GeneratorSingleNestedAttribute) CustomTypeAndValue(name string) ([]byte,
 }
 
 func (g GeneratorSingleNestedAttribute) ToFromFunctions(name string) ([]byte, error) {
+	name = schema.TypeKeyOf(g, schema.FrameworkIdentifier(name)).ToString()
+
 	if g.AssociatedExternalType == nil {
 		return nil, nil
 	}
@@ -279,4 +283,15 @@ func (g GeneratorSingleNestedAttribute) To() (schema.ToFromConversion, error) {
 
 func (g GeneratorSingleNestedAttribute) From() (schema.ToFromConversion, error) {
 	return schema.ToFromConversion{}, schema.NewUnimplementedError(errors.New("single nested type is not yet implemented"))
+}
+
+func (g GeneratorSingleNestedAttribute) TypeKey() string {
+	return g.CustomType.Name()
+}
+
+// WithTypeKey returns a copy that derives its generated Go type names from key.
+func (g GeneratorSingleNestedAttribute) WithTypeKey(key string) schema.GeneratorAttribute {
+	g.CustomType = g.CustomType.WithName(key)
+
+	return g
 }

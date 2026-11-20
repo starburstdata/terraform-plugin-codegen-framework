@@ -40,7 +40,7 @@ func (g GeneratorBlocks) AttrTypes() (map[string]string, error) {
 	attrTypes := make(map[string]string, len(g))
 
 	for _, k := range blockKeys {
-		name := FrameworkIdentifier(k)
+		name := TypeKeyOf(g[k], FrameworkIdentifier(k))
 
 		switch g[k].GeneratorSchemaType() {
 		case GeneratorListNestedBlock:

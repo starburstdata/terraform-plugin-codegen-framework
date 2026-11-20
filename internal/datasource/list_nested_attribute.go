@@ -171,6 +171,8 @@ func (g GeneratorListNestedAttribute) GetAttributes() schema.GeneratorAttributes
 }
 
 func (g GeneratorListNestedAttribute) CustomTypeAndValue(name string) ([]byte, error) {
+	name = schema.TypeKeyOf(g, schema.FrameworkIdentifier(name)).ToString()
+
 	var buf bytes.Buffer
 
 	attributeAttrValues, err := g.NestedObject.Attributes.AttrValues()
@@ -207,7 +209,7 @@ func (g GeneratorListNestedAttribute) CustomTypeAndValue(name string) ([]byte, e
 		return nil, err
 	}
 
-	objectValue := schema.NewCustomNestedObjectValue(name, attributeTypes, attributeAttrTypes, attributeAttrValues, attributeCollectionTypes)
+	objectValue := schema.NewCustomNestedObjectValue(name, attributeTypes, attributeAttrTypes, attributeAttrValues, attributeCollectionTypes).WithTypeNames(g.NestedObject.Attributes.TypeNames())
 
 	b, err = objectValue.Render()
 
@@ -237,6 +239,8 @@ func (g GeneratorListNestedAttribute) CustomTypeAndValue(name string) ([]byte, e
 }
 
 func (g GeneratorListNestedAttribute) ToFromFunctions(name string) ([]byte, error) {
+	name = schema.TypeKeyOf(g, schema.FrameworkIdentifier(name)).ToString()
+
 	if g.NestedObject.AssociatedExternalType == nil {
 		return nil, nil
 	}
@@ -290,4 +294,15 @@ func (g GeneratorListNestedAttribute) To() (schema.ToFromConversion, error) {
 
 func (g GeneratorListNestedAttribute) From() (schema.ToFromConversion, error) {
 	return schema.ToFromConversion{}, schema.NewUnimplementedError(errors.New("list nested type is not yet implemented"))
+}
+
+func (g GeneratorListNestedAttribute) TypeKey() string {
+	return g.NestedAttributeObject.TypeName()
+}
+
+// WithTypeKey returns a copy that derives its generated Go type names from key.
+func (g GeneratorListNestedAttribute) WithTypeKey(key string) schema.GeneratorAttribute {
+	g.NestedAttributeObject = g.NestedAttributeObject.WithTypeName(key)
+
+	return g
 }

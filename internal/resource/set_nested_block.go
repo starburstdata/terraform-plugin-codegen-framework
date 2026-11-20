@@ -195,6 +195,8 @@ func (g GeneratorSetNestedBlock) GetBlocks() schema.GeneratorBlocks {
 }
 
 func (g GeneratorSetNestedBlock) CustomTypeAndValue(name string) ([]byte, error) {
+	name = schema.TypeKeyOf(g, schema.FrameworkIdentifier(name)).ToString()
+
 	var buf bytes.Buffer
 
 	attributeAttrValues, err := g.NestedObject.Attributes.AttrValues()
@@ -280,7 +282,7 @@ func (g GeneratorSetNestedBlock) CustomTypeAndValue(name string) ([]byte, error)
 		return nil, err
 	}
 
-	objectValue := schema.NewCustomNestedObjectValue(name, attributesBlocksTypes, attributesBlocksAttrTypes, attributesBlocksAttrValues, attributeCollectionTypes)
+	objectValue := schema.NewCustomNestedObjectValue(name, attributesBlocksTypes, attributesBlocksAttrTypes, attributesBlocksAttrValues, attributeCollectionTypes).WithTypeNames(schema.NestedTypeNames(g.NestedObject.Attributes, g.NestedObject.Blocks))
 
 	b, err = objectValue.Render()
 
@@ -324,6 +326,8 @@ func (g GeneratorSetNestedBlock) CustomTypeAndValue(name string) ([]byte, error)
 }
 
 func (g GeneratorSetNestedBlock) ToFromFunctions(name string) ([]byte, error) {
+	name = schema.TypeKeyOf(g, schema.FrameworkIdentifier(name)).ToString()
+
 	if g.NestedObject.AssociatedExternalType == nil {
 		return nil, nil
 	}
@@ -377,4 +381,15 @@ func (g GeneratorSetNestedBlock) To() (schema.ToFromConversion, error) {
 
 func (g GeneratorSetNestedBlock) From() (schema.ToFromConversion, error) {
 	return schema.ToFromConversion{}, schema.NewUnimplementedError(errors.New("set nested type is not yet implemented"))
+}
+
+func (g GeneratorSetNestedBlock) TypeKey() string {
+	return g.NestedBlockObject.TypeName()
+}
+
+// WithTypeKey returns a copy that derives its generated Go type names from key.
+func (g GeneratorSetNestedBlock) WithTypeKey(key string) schema.GeneratorBlock {
+	g.NestedBlockObject = g.NestedBlockObject.WithTypeName(key)
+
+	return g
 }

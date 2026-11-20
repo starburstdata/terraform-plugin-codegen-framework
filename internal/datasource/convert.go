@@ -57,6 +57,10 @@ func NewSchema(d datasource.DataSource) (generatorschema.GeneratorSchema, error)
 
 	s.Blocks = blocks
 
+	if err := generatorschema.DisambiguateTypeKeys(attributes, blocks); err != nil {
+		return s, err
+	}
+
 	s.Description = d.Schema.Description
 
 	s.MarkdownDescription = d.Schema.MarkdownDescription

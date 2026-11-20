@@ -30,6 +30,17 @@ func NewNestedAttributeObject(a generatorschema.GeneratorAttributes, c *specsche
 	}
 }
 
+// WithTypeName returns a copy that derives the generated Go type names from name.
+func (n NestedAttributeObject) WithTypeName(name string) NestedAttributeObject {
+	n.customType = n.customType.WithName(name)
+
+	return n
+}
+
+func (n NestedAttributeObject) TypeName() string {
+	return n.customType.Name()
+}
+
 func (n NestedAttributeObject) Equal(other NestedAttributeObject) bool {
 	if !n.attributes.Equal(other.attributes) {
 		return false
