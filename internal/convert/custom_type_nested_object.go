@@ -40,6 +40,10 @@ func (c CustomTypeNestedObject) WithName(name string) CustomTypeNestedObject {
 	return c
 }
 
+func (c CustomTypeNestedObject) Name() string {
+	return c.name
+}
+
 func (c CustomTypeNestedObject) Equal(other CustomTypeNestedObject) bool {
 	if !c.customType.Equal(other.customType) {
 		return false

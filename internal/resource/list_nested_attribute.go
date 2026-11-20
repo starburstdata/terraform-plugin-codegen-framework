@@ -26,9 +26,6 @@ type GeneratorListNestedAttribute struct {
 	PlanModifiers            convert.PlanModifiers
 	Sensitive                convert.Sensitive
 	Validators               convert.Validators
-
-	// TypeNameKey overrides the attribute name when deriving generated Go type names.
-	TypeNameKey string
 }
 
 func NewGeneratorListNestedAttribute(name string, a *resource.ListNestedAttribute) (GeneratorListNestedAttribute, error) {
@@ -111,10 +108,6 @@ func (g GeneratorListNestedAttribute) Equal(ga schema.GeneratorAttribute) bool {
 	h, ok := ga.(GeneratorListNestedAttribute)
 
 	if !ok {
-		return false
-	}
-
-	if g.TypeNameKey != h.TypeNameKey {
 		return false
 	}
 
@@ -240,7 +233,7 @@ func (g GeneratorListNestedAttribute) CustomTypeAndValue(name string) ([]byte, e
 		return nil, err
 	}
 
-	objectValue := schema.NewCustomNestedObjectValue(name, attributeTypes, attributeAttrTypes, attributeAttrValues, attributeCollectionTypes)
+	objectValue := schema.NewCustomNestedObjectValue(name, attributeTypes, attributeAttrTypes, attributeAttrValues, attributeCollectionTypes).WithTypeNames(g.NestedObject.Attributes.TypeNames())
 
 	b, err = objectValue.Render()
 
@@ -328,12 +321,11 @@ func (g GeneratorListNestedAttribute) From() (schema.ToFromConversion, error) {
 }
 
 func (g GeneratorListNestedAttribute) TypeKey() string {
-	return g.TypeNameKey
+	return g.NestedAttributeObject.TypeName()
 }
 
 // WithTypeKey returns a copy that derives its generated Go type names from key.
 func (g GeneratorListNestedAttribute) WithTypeKey(key string) schema.GeneratorAttribute {
-	g.TypeNameKey = key
 	g.NestedAttributeObject = g.NestedAttributeObject.WithTypeName(key)
 
 	return g

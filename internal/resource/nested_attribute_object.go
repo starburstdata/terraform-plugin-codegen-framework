@@ -37,6 +37,10 @@ func (n NestedAttributeObject) WithTypeName(name string) NestedAttributeObject {
 	return n
 }
 
+func (n NestedAttributeObject) TypeName() string {
+	return n.customType.Name()
+}
+
 func (n NestedAttributeObject) Equal(other NestedAttributeObject) bool {
 	if !n.attributes.Equal(other.attributes) {
 		return false

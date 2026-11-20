@@ -12,6 +12,17 @@ import (
 
 type GeneratorAttributes map[string]GeneratorAttribute
 
+// TypeNames maps Terraform attribute keys to their resolved generated type names.
+func (g GeneratorAttributes) TypeNames() map[string]string {
+	names := make(map[string]string)
+	for key, a := range g {
+		if _, ok := a.(TypeKeyer); ok {
+			names[key] = TypeKeyOf(a, FrameworkIdentifier(key)).ToString()
+		}
+	}
+	return names
+}
+
 // AttributeTypes returns a mapping of attribute names to string representations of the
 // attribute type.
 func (g GeneratorAttributes) AttributeTypes() (map[string]string, error) {

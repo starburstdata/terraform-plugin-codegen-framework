@@ -3,25 +3,14 @@
 
 package schema
 
-import (
-	"fmt"
-	"sort"
-)
+import "fmt"
 
-// maxTypeKeyRounds bounds the renaming loop in DisambiguateTypeKeys.
-const maxTypeKeyRounds = 10
-
-// TypeKeyer is implemented by nested attributes that generate a custom Type and Value. The type key is the
-// snake_case identifier the generated Go type names are derived from. It defaults to the attribute name,
-// so two nested attributes with the same name but different shapes would generate clashing Go types.
+// TypeKeyer separates generated Go type names from Terraform attribute names.
 type TypeKeyer interface {
 	GeneratorAttribute
 	Attributes
 
-	// TypeKey returns the override, or an empty string if the attribute name is used.
 	TypeKey() string
-
-	// WithTypeKey returns a copy of the attribute that derives its generated Go type names from key.
 	WithTypeKey(key string) GeneratorAttribute
 }
 
@@ -34,107 +23,78 @@ func TypeKeyOf(a GeneratorAttribute, name FrameworkIdentifier) FrameworkIdentifi
 	return name
 }
 
-type typeKeyEntry struct {
-	container GeneratorAttributes
-	name      string
-	attr      TypeKeyer
-	key       string
-	parentKey string
-}
-
-// DisambiguateTypeKeys gives nested attributes that share a name, but would generate different Go types,
-// distinct type keys. Attributes that generate identical types keep sharing one key, and the first attribute
-// of a clashing group (in sorted depth-first order) keeps the plain name, so existing output is unchanged
-// unless a clash exists. The attributes are modified in place.
+// DisambiguateTypeKeys assigns unique Go names to different shapes without changing Terraform keys.
 func DisambiguateTypeKeys(attrs GeneratorAttributes) error {
-	for round := 0; round < maxTypeKeyRounds; round++ {
-		var entries []typeKeyEntry
-
-		collectTypeKeyEntries(attrs, "", &entries)
-
-		byKey := make(map[string][]typeKeyEntry, len(entries))
-		var keys []string
-
-		for _, e := range entries {
-			if _, ok := byKey[e.key]; !ok {
-				keys = append(keys, e.key)
-			}
-
-			byKey[e.key] = append(byKey[e.key], e)
-		}
-
-		changed := false
-
-		for _, key := range keys {
-			group := byKey[key]
-
-			if len(group) < 2 {
-				continue
-			}
-
-			first, err := typeFingerprint(group[0].attr)
-
-			if err != nil {
-				return err
-			}
-
-			for _, e := range group[1:] {
-				fp, err := typeFingerprint(e.attr)
-
-				if err != nil {
-					return err
-				}
-
-				if fp == first {
-					continue
-				}
-
-				newKey := e.key + "_" + e.name
-
-				if e.parentKey != "" {
-					newKey = e.parentKey + "_" + e.name
-				}
-
-				if newKey == e.key {
-					return fmt.Errorf("unable to generate a unique type name for nested attribute %q", e.name)
-				}
-
-				e.container[e.name] = e.attr.WithTypeKey(newKey)
-				changed = true
-			}
-		}
-
-		if !changed {
-			return nil
-		}
+	names := typeNames{
+		reserved: make(map[string]bool),
+		used:     make(map[string]bool),
+		shapes:   make(map[string]map[string]string),
 	}
-
-	return fmt.Errorf("nested attribute type names did not converge after %d rounds", maxTypeKeyRounds)
+	names.reserve(attrs)
+	return names.assign(attrs, "")
 }
 
-func collectTypeKeyEntries(attrs GeneratorAttributes, parentKey string, entries *[]typeKeyEntry) {
+type typeNames struct {
+	reserved map[string]bool
+	used     map[string]bool
+	shapes   map[string]map[string]string
+}
+
+func (n *typeNames) reserve(attrs GeneratorAttributes) {
 	for _, name := range attrs.SortedKeys() {
 		t, ok := attrs[name].(TypeKeyer)
-
 		if !ok {
 			continue
 		}
 
-		key := string(TypeKeyOf(t, FrameworkIdentifier(name)))
-
-		*entries = append(*entries, typeKeyEntry{
-			container: attrs,
-			name:      name,
-			attr:      t,
-			key:       key,
-			parentKey: parentKey,
-		})
-
-		collectTypeKeyEntries(t.GetAttributes(), key, entries)
+		n.reserved[TypeKeyOf(t, FrameworkIdentifier(name)).ToPascalCase()] = true
+		n.reserve(t.GetAttributes())
 	}
 }
 
-// typeFingerprint captures everything that determines the generated Type and Value code of a nested attribute.
+func (n *typeNames) assign(attrs GeneratorAttributes, parentPath string) error {
+	for _, name := range attrs.SortedKeys() {
+		t, ok := attrs[name].(TypeKeyer)
+		if !ok {
+			continue
+		}
+
+		path := name
+		if parentPath != "" {
+			path = parentPath + "_" + name
+		}
+		// Resolve children first so parent fingerprints include their final type names.
+		if err := n.assign(t.GetAttributes(), path); err != nil {
+			return err
+		}
+		fingerprint, err := typeFingerprint(t)
+		if err != nil {
+			return err
+		}
+
+		key := TypeKeyOf(t, FrameworkIdentifier(name)).ToString()
+		goName := FrameworkIdentifier(key).ToPascalCase()
+		if n.shapes[goName] == nil {
+			n.shapes[goName] = make(map[string]string)
+		}
+		if shared, ok := n.shapes[goName][fingerprint]; ok {
+			attrs[name] = t.WithTypeKey(shared)
+			continue
+		}
+		if n.used[goName] {
+			key = path
+			for suffix := 2; n.used[FrameworkIdentifier(key).ToPascalCase()] || n.reserved[FrameworkIdentifier(key).ToPascalCase()]; suffix++ {
+				key = fmt.Sprintf("%s_%d", path, suffix)
+			}
+		}
+		n.shapes[goName][fingerprint] = key
+		n.used[FrameworkIdentifier(key).ToPascalCase()] = true
+		attrs[name] = t.WithTypeKey(key)
+	}
+	return nil
+}
+
+// typeFingerprint describes generated value fields and their resolved types.
 func typeFingerprint(t TypeKeyer) (string, error) {
 	attrs := t.GetAttributes()
 
@@ -162,8 +122,5 @@ func typeFingerprint(t TypeKeyer) (string, error) {
 		return "", err
 	}
 
-	names := attrs.SortedKeys()
-	sort.Strings(names)
-
-	return fmt.Sprintf("%v|%v|%v|%v|%v", names, attributeTypes, attrTypes, attrValues, collectionTypes), nil
+	return fmt.Sprintf("%v|%v|%v|%v", attributeTypes, attrTypes, attrValues, collectionTypes), nil
 }

@@ -1,0 +1,104 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+package generated
+
+import (
+	"context"
+	"testing"
+
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
+)
+
+func nestedValue(t *testing.T, ty attr.Type, state string) attr.Value {
+	t.Helper()
+	ctx := context.Background()
+	if state != "known" {
+		var raw any
+		if state == "unknown" {
+			raw = tftypes.UnknownValue
+		}
+		value, err := ty.ValueFromTerraform(ctx, tftypes.NewValue(ty.TerraformType(ctx), raw))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return value
+	}
+	var value attr.Value
+	switch typed := ty.(type) {
+	case attr.TypeWithAttributeTypes:
+		attributes := map[string]attr.Value{}
+		for key, child := range typed.AttributeTypes() {
+			attributes[key] = nestedValue(t, child, "known")
+		}
+		value = types.ObjectValueMust(typed.AttributeTypes(), attributes)
+	case basetypes.ListType:
+		value = types.ListValueMust(typed.ElemType, []attr.Value{nestedValue(t, typed.ElemType, "known")})
+	case basetypes.MapType:
+		value = types.MapValueMust(typed.ElemType, map[string]attr.Value{"first": nestedValue(t, typed.ElemType, "known")})
+	case basetypes.SetType:
+		value = types.SetValueMust(typed.ElemType, []attr.Value{nestedValue(t, typed.ElemType, "known")})
+	case basetypes.StringType:
+		value = types.StringValue("parser")
+	default:
+		t.Fatalf("unsupported fixture type %T", ty)
+	}
+	raw, err := value.ToTerraformValue(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	custom, err := ty.ValueFromTerraform(ctx, raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return custom
+}
+
+func TestNestedTypeRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	parentType := SCHEMA(ctx).Attributes["b"].GetType()
+	fields := parentType.(attr.TypeWithAttributeTypes).AttributeTypes()
+	childType := fields["columns"]
+	if collection, ok := childType.(attr.TypeWithElementType); ok {
+		childType = collection.ElementType()
+	}
+	childFields := childType.(attr.TypeWithAttributeTypes).AttributeTypes()
+	if _, ok := childFields["field_parser_config"]; !ok {
+		t.Fatal("parser branch lost field_parser_config")
+	}
+	if _, ok := childFields["expression"]; ok {
+		t.Fatal("parser branch incorrectly uses expression")
+	}
+	for _, state := range []string{"known", "null", "unknown"} {
+		t.Run(state, func(t *testing.T) {
+			defer func() {
+				if failure := recover(); failure != nil {
+					t.Errorf("conversion panicked: %v", failure)
+				}
+			}()
+			input := types.ObjectValueMust(fields, map[string]attr.Value{"columns": nestedValue(t, fields["columns"], state)})
+			raw, err := input.ToTerraformValue(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			parent, err := parentType.ValueFromTerraform(ctx, raw)
+			if err != nil {
+				t.Fatal(err)
+			}
+			output, diagnostics := parent.(basetypes.ObjectValuable).ToObjectValue(ctx)
+			if diagnostics.HasError() {
+				t.Fatal(diagnostics)
+			}
+			roundTrip, err := output.ToTerraformValue(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !raw.Equal(roundTrip) {
+				t.Fatalf("conversion changed the value: %s != %s", raw, roundTrip)
+			}
+		})
+	}
+}
