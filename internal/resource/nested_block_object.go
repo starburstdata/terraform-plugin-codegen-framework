@@ -32,6 +32,15 @@ func NewNestedBlockObject(a generatorschema.GeneratorAttributes, b generatorsche
 	}
 }
 
+func (n NestedBlockObject) TypeName() string {
+	return n.customType.Name()
+}
+
+func (n NestedBlockObject) WithTypeName(name string) NestedBlockObject {
+	n.customType = n.customType.WithName(name)
+	return n
+}
+
 func (n NestedBlockObject) Equal(other NestedBlockObject) bool {
 	if !n.attributes.Equal(other.attributes) {
 		return false

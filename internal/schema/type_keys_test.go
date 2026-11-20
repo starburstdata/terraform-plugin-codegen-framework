@@ -120,7 +120,7 @@ func typeKeys(t *testing.T, attrs resource.Attributes) schema.GeneratorAttribute
 		t.Fatal(err)
 	}
 
-	if err := schema.DisambiguateTypeKeys(got); err != nil {
+	if err := schema.DisambiguateTypeKeys(got, nil); err != nil {
 		t.Fatal(err)
 	}
 

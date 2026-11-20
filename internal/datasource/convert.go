@@ -43,10 +43,6 @@ func NewSchema(d datasource.DataSource) (generatorschema.GeneratorSchema, error)
 		attributes[v.Name] = a
 	}
 
-	if err := generatorschema.DisambiguateTypeKeys(attributes); err != nil {
-		return s, err
-	}
-
 	s.Attributes = attributes
 
 	for _, v := range d.Schema.Blocks {
@@ -60,6 +56,10 @@ func NewSchema(d datasource.DataSource) (generatorschema.GeneratorSchema, error)
 	}
 
 	s.Blocks = blocks
+
+	if err := generatorschema.DisambiguateTypeKeys(attributes, blocks); err != nil {
+		return s, err
+	}
 
 	s.Description = d.Schema.Description
 

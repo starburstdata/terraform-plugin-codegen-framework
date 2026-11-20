@@ -57,48 +57,132 @@ func nestedValue(t *testing.T, ty attr.Type, state string) attr.Value {
 	return custom
 }
 
+func objectType(ty attr.Type) attr.Type {
+	if collection, ok := ty.(attr.TypeWithElementType); ok {
+		ty = collection.ElementType()
+	}
+	return ty
+}
+
+func objectFields(t *testing.T, ty attr.Type) map[string]attr.Type {
+	t.Helper()
+	ty = objectType(ty)
+	object, ok := ty.(attr.TypeWithAttributeTypes)
+	if !ok {
+		t.Fatalf("expected object type, got %T", ty)
+	}
+	return object.AttributeTypes()
+}
+
+func assertParserFields(t *testing.T, ty attr.Type) {
+	t.Helper()
+	fields := objectFields(t, ty)
+	if _, ok := fields["field_parser_config"]; !ok {
+		t.Fatal("parser branch lost field_parser_config")
+	}
+	if _, ok := fields["expression"]; ok {
+		t.Fatal("parser branch incorrectly uses expression")
+	}
+	if len(fields) != 1 {
+		t.Fatalf("unexpected parser fields: %v", fields)
+	}
+}
+
+func assertObjectRoundTrip(t *testing.T, parentType attr.Type, input basetypes.ObjectValue) {
+	t.Helper()
+	defer func() {
+		if failure := recover(); failure != nil {
+			t.Errorf("conversion panicked: %v", failure)
+		}
+	}()
+	ctx := context.Background()
+	raw, err := input.ToTerraformValue(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parent, err := parentType.ValueFromTerraform(ctx, raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	output, diagnostics := parent.(basetypes.ObjectValuable).ToObjectValue(ctx)
+	if diagnostics.HasError() {
+		t.Fatal(diagnostics)
+	}
+	roundTrip, err := output.ToTerraformValue(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !raw.Equal(roundTrip) {
+		t.Fatalf("conversion changed the value: %s != %s", raw, roundTrip)
+	}
+}
+
+func testObjectRoundTrips(t *testing.T, parentType attr.Type) {
+	t.Helper()
+	fields := objectFields(t, parentType)
+	for _, state := range []string{"known", "null", "unknown"} {
+		t.Run(state, func(t *testing.T) {
+			values := map[string]attr.Value{}
+			for key, ty := range fields {
+				values[key] = nestedValue(t, ty, state)
+			}
+			assertObjectRoundTrip(t, parentType, types.ObjectValueMust(fields, values))
+		})
+	}
+	t.Run("null_object", func(t *testing.T) {
+		assertObjectRoundTrip(t, parentType, types.ObjectNull(fields))
+	})
+	t.Run("unknown_object", func(t *testing.T) {
+		assertObjectRoundTrip(t, parentType, types.ObjectUnknown(fields))
+	})
+}
+
 func TestNestedTypeRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	parentType := SCHEMA(ctx).Attributes["b"].GetType()
-	fields := parentType.(attr.TypeWithAttributeTypes).AttributeTypes()
-	childType := fields["columns"]
-	if collection, ok := childType.(attr.TypeWithElementType); ok {
-		childType = collection.ElementType()
+	fields := objectFields(t, parentType)
+	assertParserFields(t, fields["columns"])
+	testObjectRoundTrips(t, parentType)
+}
+
+// BLOCK_TESTS
+
+func TestBlockTypeRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	schema := SCHEMA(ctx)
+	var blockType attr.Type
+	if NESTED_BLOCK {
+		blockType = objectFields(t, schema.Blocks["wrapper"].Type())["b_columns"]
+	} else {
+		blockType = schema.Blocks["b_columns"].Type()
 	}
-	childFields := childType.(attr.TypeWithAttributeTypes).AttributeTypes()
-	if _, ok := childFields["field_parser_config"]; !ok {
-		t.Fatal("parser branch lost field_parser_config")
+	fields := objectFields(t, blockType)
+	if _, ok := fields["block_field"]; !ok || len(fields) != 1 {
+		t.Fatalf("fixed block lost its block_field shape: %v", fields)
 	}
-	if _, ok := childFields["expression"]; ok {
-		t.Fatal("parser branch incorrectly uses expression")
+	testObjectRoundTrips(t, objectType(blockType))
+	if NESTED_BLOCK {
+		testObjectRoundTrips(t, objectType(schema.Blocks["wrapper"].Type()))
 	}
-	for _, state := range []string{"known", "null", "unknown"} {
-		t.Run(state, func(t *testing.T) {
-			defer func() {
-				if failure := recover(); failure != nil {
-					t.Errorf("conversion panicked: %v", failure)
-				}
-			}()
-			input := types.ObjectValueMust(fields, map[string]attr.Value{"columns": nestedValue(t, fields["columns"], state)})
-			raw, err := input.ToTerraformValue(ctx)
-			if err != nil {
-				t.Fatal(err)
-			}
-			parent, err := parentType.ValueFromTerraform(ctx, raw)
-			if err != nil {
-				t.Fatal(err)
-			}
-			output, diagnostics := parent.(basetypes.ObjectValuable).ToObjectValue(ctx)
-			if diagnostics.HasError() {
-				t.Fatal(diagnostics)
-			}
-			roundTrip, err := output.ToTerraformValue(ctx)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if !raw.Equal(roundTrip) {
-				t.Fatalf("conversion changed the value: %s != %s", raw, roundTrip)
-			}
-		})
+}
+
+func TestHolderTypeRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	holderType := objectType(SCHEMA(ctx).Blocks["holder"].Type())
+	fields := objectFields(t, holderType)
+	assertParserFields(t, fields["b_columns"])
+	testObjectRoundTrips(t, holderType)
+}
+
+func TestAlternateTypeRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	alternateType := objectType(SCHEMA(ctx).Blocks["alternate"].Type())
+	fields := objectFields(t, alternateType)
+	childType := objectType(fields["b_columns"])
+	childFields := objectFields(t, childType)
+	if _, ok := childFields["alternate_field"]; !ok || len(childFields) != 1 {
+		t.Fatalf("alternate block uses the wrong shape: %v", childFields)
 	}
+	testObjectRoundTrips(t, childType)
+	testObjectRoundTrips(t, alternateType)
 }
